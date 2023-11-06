@@ -2,10 +2,10 @@
 pragma solidity >=0.4.22 <0.8.20;
 pragma experimental ABIEncoderV2;
 
-import "./TnSDK.sol";
+import "./LuyuSDK.sol";
 import "./CrossChainContract.sol";
 
-contract WeCrossBridge is CrossChainBridge, TnContract {
+contract WeCrossBridge is CrossChainBridge, LuyuContract {
     string public crossChainUserAddress =
         "0x062201f9aaf520ef5fae98b2c87db66508114c3f"; // L1
     string public peerPath; //= "payment.eth1.WeCrossBridge", "payment.bcos1.WeCrossBridge"
@@ -25,13 +25,13 @@ contract WeCrossBridge is CrossChainBridge, TnContract {
         string[] memory args = new string[](2);
         args[0] = uintToString(taskID);
         args[1] = message;
-        string memory tnIdentity = crossChainUserAddress;
+        string memory luyuIdentity = crossChainUserAddress;
         string memory callbackMethod = "proposeCallback";
-        uint256 nonce = tnSendTransaction(
+        uint256 nonce = luyuSendTransaction(
             path,
             method,
             args,
-            tnIdentity,
+            luyuIdentity,
             callbackMethod
         );
 
@@ -63,13 +63,13 @@ contract WeCrossBridge is CrossChainBridge, TnContract {
         string memory method = "cancelHandler";
         string[] memory args = new string[](1);
         args[0] = uintToString(taskID);
-        string memory tnIdentity = crossChainUserAddress;
+        string memory luyuIdentity = crossChainUserAddress;
         string memory callbackMethod = "cancelCallback";
-        uint256 nonce = tnSendTransaction(
+        uint256 nonce = luyuSendTransaction(
             path,
             method,
             args,
-            tnIdentity,
+            luyuIdentity,
             callbackMethod
         );
 
@@ -90,13 +90,13 @@ contract WeCrossBridge is CrossChainBridge, TnContract {
         string memory method = "commitHandler";
         string[] memory args = new string[](1);
         args[0] = uintToString(taskID);
-        string memory tnIdentity = crossChainUserAddress;
+        string memory luyuIdentity = crossChainUserAddress;
         string memory callbackMethod = "commitCallback";
-        uint256 nonce = tnSendTransaction(
+        uint256 nonce = luyuSendTransaction(
             path,
             method,
             args,
-            tnIdentity,
+            luyuIdentity,
             callbackMethod
         );
 

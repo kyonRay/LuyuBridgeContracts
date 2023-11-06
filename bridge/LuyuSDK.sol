@@ -2,149 +2,149 @@
 pragma solidity >=0.4.22 <0.8.20;
 pragma experimental ABIEncoderV2;
 
-interface ITnSDK {
+interface ILuyuSDK {
     ///// 跨链调用接口
 
     /*
-     *   向目的资源发送交易：tnSendTransaction
+     *   向目的资源发送交易：luyuSendTransaction
      */
-    function tnSendTransaction(
+    function luyuSendTransaction(
         string calldata path, // 目的资源路径
         string calldata method, // 目的资源方法
         string[] calldata args, // 目的资源参数
-        string calldata tnIdentity, // 当前交易者对应的一级账户身份（address）
+        string calldata luyuIdentity, // 当前交易者对应的一级账户身份（address）
         string calldata callbackMethod // 回调函数名
     ) external returns (uint256); // 返回值nonce，用于回调函数被调用时进行关联
 
     // 支持手动指定nonce
-    function tnSendTransaction(
+    function luyuSendTransaction(
         string calldata path, // 目的资源路径
         string calldata method, // 目的资源方法
         string[] calldata args, // 目的资源参数
         uint256 nonce, // 手动指定的nonce
-        string calldata tnIdentity, // 当前交易者对应的一级账户身份（address）
+        string calldata luyuIdentity, // 当前交易者对应的一级账户身份（address）
         string calldata callbackMethod // 回调函数名
     ) external returns (uint256); // 返回值nonce，用于回调函数被调用时进行关联
 
     /*
-     *   查询目的资源状态：tnCall
+     *   查询目的资源状态：luyuCall
      */
-    function tnCall(
+    function luyuCall(
         string calldata path, // 目的资源路径
         string calldata method, // 目的资源方法
         string[] calldata args, // 目的资源参数
-        string calldata tnIdentity, // 当前交易者对应的一级账户身份（address）
+        string calldata luyuIdentity, // 当前交易者对应的一级账户身份（address）
         string calldata callbackMethod // 回调函数名
     ) external returns (uint256); // 返回值nonce，用于回调函数被调用时进行关联
 
     // 支持手动指定nonce
-    function tnCall(
+    function luyuCall(
         string calldata path, // 目的资源路径
         string calldata method, // 目的资源方法
         string[] calldata args, // 目的资源参数
         uint256 nonce, // 手动指定的nonce
-        string calldata tnIdentity, // 当前交易者对应的一级账户身份（address）
+        string calldata luyuIdentity, // 当前交易者对应的一级账户身份（address）
         string calldata callbackMethod // 回调函数名
     ) external returns (uint256); // 返回值nonce，用于回调函数被调用时进行关联
 
     ///// 内部事件（用于链插件响应）
-    event TnSendTransaction(
+    event LuyuSendTransaction(
         string path,
         string method,
         string[] args,
         uint256 nonce,
-        string tnIdentity,
+        string luyuIdentity,
         string callbackMethod,
         address sender // 交易发送者的二级账户身份，即：tx.origin
     );
-    event TnCall(
+    event LuyuCall(
         string path,
         string method,
         string[] args,
         uint256 nonce,
-        string tnIdentity,
+        string luyuIdentity,
         string callbackMethod,
         address sender // 交易发送者的二级账户身份，即：tx.origin
     );
 }
 
-contract TnContract is ITnSDK {
+contract LuyuContract is ILuyuSDK {
     uint256 nonceSeed = 0;
 
-    function tnSendTransaction(
+    function luyuSendTransaction(
         string memory path,
         string memory method,
         string[] memory args,
-        string memory tnIdentity,
+        string memory luyuIdentity,
         string memory callbackMethod
-    ) public override returns (uint256) {
+    ) public returns (uint256) {
         uint256 nonce = getNonce();
-        emit TnSendTransaction(
+        emit LuyuSendTransaction(
             path,
             method,
             args,
             nonce,
-            tnIdentity,
+            luyuIdentity,
             callbackMethod,
             tx.origin
         );
         return nonce;
     }
 
-    function tnSendTransaction(
+    function luyuSendTransaction(
         string memory path,
         string memory method,
         string[] memory args,
         uint256 nonce,
-        string memory tnIdentity,
+        string memory luyuIdentity,
         string memory callbackMethod
-    ) public override returns (uint256) {
-        emit TnSendTransaction(
+    ) public returns (uint256) {
+        emit LuyuSendTransaction(
             path,
             method,
             args,
             nonce,
-            tnIdentity,
+            luyuIdentity,
             callbackMethod,
             tx.origin
         );
         return nonce;
     }
 
-    function tnCall(
+    function luyuCall(
         string memory path,
         string memory method,
         string[] memory args,
-        string memory tnIdentity,
+        string memory luyuIdentity,
         string memory callbackMethod
-    ) public override returns (uint256) {
+    ) public returns (uint256) {
         uint256 nonce = getNonce();
-        emit TnCall(
+        emit LuyuCall(
             path,
             method,
             args,
             nonce,
-            tnIdentity,
+            luyuIdentity,
             callbackMethod,
             tx.origin
         );
         return nonce;
     }
 
-    function tnCall(
+    function luyuCall(
         string memory path,
         string memory method,
         string[] memory args,
         uint256 nonce,
-        string memory tnIdentity,
+        string memory luyuIdentity,
         string memory callbackMethod
-    ) public override returns (uint256) {
-        emit TnCall(
+    ) public returns (uint256) {
+        emit LuyuCall(
             path,
             method,
             args,
             nonce,
-            tnIdentity,
+            luyuIdentity,
             callbackMethod,
             tx.origin
         );

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache 2
-
-pragma solidity ^0.6.10;
+pragma solidity >=0.4.22 <0.8.20;
 pragma experimental ABIEncoderV2;
 
 import "./ERC20.sol";
@@ -22,7 +21,7 @@ contract WrappedToken is ERC20 {
         string memory symbol_,
         address nativeAddress_,
         uint16 nativeChainId_
-    ) public ERC20(strConcat("F", name_), strConcat("F", symbol_)) {
+    ) ERC20(strConcat("F", name_), strConcat("F", symbol_)) {
         nativeAddress = nativeAddress_;
         nativeChainId = nativeChainId_;
         owner = msg.sender;

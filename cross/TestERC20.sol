@@ -4,16 +4,14 @@
 
 */
 
-pragma solidity ^0.6.10;
+pragma solidity >=0.4.22 <0.8.20;
 
 import "./ERC20.sol";
 
 contract TestERC20 is ERC20("test", "TST") {
-
     /**
      */
-    constructor () public {
-    }
+    constructor() {}
 
     /**
      */
@@ -21,5 +19,4 @@ contract TestERC20 is ERC20("test", "TST") {
         _mint(to, value);
         return true;
     }
-
 }
