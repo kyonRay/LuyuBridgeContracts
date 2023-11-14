@@ -158,7 +158,7 @@ contract LuyuContract is ILuyuSDK {
     function getNow() private view returns (uint256) {
         // 'now' in ehtereum return in seconds but millisecond in fisco bcos
         // Need to format to seconds
-        return getSecondTime(now);
+        return getSecondTime(block.timestamp);
     }
 
     function getSecondTime(uint256 time) private pure returns (uint256) {

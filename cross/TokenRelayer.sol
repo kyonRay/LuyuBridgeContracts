@@ -160,6 +160,8 @@ contract TokenRelayer is CrossChainContract {
     }
     */
 
+    event Deposit(uint256);
+
     // set to all chain
     function deposit(
         address tokenAddress,
@@ -169,12 +171,12 @@ contract TokenRelayer is CrossChainContract {
         bytes memory data;
         if (isWrappedAsset[tokenAddress]) {
             data = abi.encode(
-                chainID,
-                tokenAddress,
-                WrappedToken(tokenAddress).nativeAddress(),
+                chainID, // from chain
+                tokenAddress, // source tokenAddress
+                WrappedToken(tokenAddress).nativeAddress(), // target token address
                 amount,
-                msg.sender,
-                receiveAddress
+                msg.sender, // from address
+                receiveAddress // receive Address
             );
         } else {
             data = abi.encode(
@@ -187,11 +189,10 @@ contract TokenRelayer is CrossChainContract {
             );
         }
         uint256 taskID = getBridge().propose(string(data));
-        if (taskID != 0) {
-            //onPropose(taskID, string(data));
-            getBridge().commit(taskID); // please impl transfer in onCommit()
-        }
+        emit Deposit(taskID);
     }
+
+    event CreateToken(address);
 
     function setWrappedAsset(
         uint16 tokenChainId,
@@ -200,6 +201,7 @@ contract TokenRelayer is CrossChainContract {
     ) internal {
         wrappedAssets[tokenChainId][tokenAddress] = wrapper;
         isWrappedAsset[wrapper] = true;
+        emit CreateToken(wrapper);
     }
 
     function createWrapped(
@@ -207,7 +209,7 @@ contract TokenRelayer is CrossChainContract {
         string memory symbol_,
         address nativeAddress_,
         uint16 nativeChainId_
-    ) external returns (address token) {
+    ) public returns (address) {
         require(
             wrappedAssets[nativeChainId_][nativeAddress_] == address(0),
             "wrapped asset already exists"
@@ -218,7 +220,8 @@ contract TokenRelayer is CrossChainContract {
             nativeAddress_,
             nativeChainId_
         );
-        token = address(newAsset);
+        address token = address(newAsset);
         setWrappedAsset(nativeChainId_, nativeAddress_, token);
+        return token;
     }
 }

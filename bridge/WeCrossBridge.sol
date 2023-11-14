@@ -19,11 +19,13 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract {
 
     function propose(string memory params) public override returns (uint256) {
         uint256 taskID = getNonce();
+
         string memory message = messageEncode(params);
+
         string memory path = peerPath;
         string memory method = "proposeHandler";
         string[] memory args = new string[](2);
-        args[0] = uintToString(taskID);
+        args[0] = toString(taskID);
         args[1] = message;
         string memory luyuIdentity = crossChainUserAddress;
         string memory callbackMethod = "proposeCallback";
@@ -42,7 +44,8 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract {
 
     function proposeHandler(uint256 taskID, string memory params) public {
         tasks[taskID] = params;
-        crossChainContract.onPropose(taskID, messageDecode(params));
+        bool ret = crossChainContract.onPropose(taskID, messageDecode(params));
+        require(ret, "proposeHandler: onPropose failed");
     }
 
     function callOnPropose(uint256 taskID) public {
@@ -52,8 +55,11 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract {
     function proposeCallback(uint256 nonce) public {
         uint256 taskID = nonce2TaskID[nonce];
 
-        crossChainContract.onPropose(taskID, messageDecode(tasks[taskID]));
-
+        bool ret = crossChainContract.onPropose(
+            taskID,
+            messageDecode(tasks[taskID])
+        );
+        require(ret, "proposeCallback: onPropose failed");
         // trigger commit
         commit(taskID);
     }
@@ -62,7 +68,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract {
         string memory path = peerPath;
         string memory method = "cancelHandler";
         string[] memory args = new string[](1);
-        args[0] = uintToString(taskID);
+        args[0] = toString(taskID);
         string memory luyuIdentity = crossChainUserAddress;
         string memory callbackMethod = "cancelCallback";
         uint256 nonce = luyuSendTransaction(
@@ -89,7 +95,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract {
         string memory path = peerPath;
         string memory method = "commitHandler";
         string[] memory args = new string[](1);
-        args[0] = uintToString(taskID);
+        args[0] = toString(taskID);
         string memory luyuIdentity = crossChainUserAddress;
         string memory callbackMethod = "commitCallback";
         uint256 nonce = luyuSendTransaction(
@@ -112,24 +118,65 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract {
         crossChainContract.onCommit(taskID);
     }
 
-    function uintToString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) {
-            return "0";
+    /**
+     * @dev Return the log in base 10 of a positive value rounded towards zero.
+     * Returns 0 if given 0.
+     */
+    function log10(uint256 value) internal pure returns (uint256) {
+        uint256 result = 0;
+        unchecked {
+            if (value >= 10 ** 64) {
+                value /= 10 ** 64;
+                result += 64;
+            }
+            if (value >= 10 ** 32) {
+                value /= 10 ** 32;
+                result += 32;
+            }
+            if (value >= 10 ** 16) {
+                value /= 10 ** 16;
+                result += 16;
+            }
+            if (value >= 10 ** 8) {
+                value /= 10 ** 8;
+                result += 8;
+            }
+            if (value >= 10 ** 4) {
+                value /= 10 ** 4;
+                result += 4;
+            }
+            if (value >= 10 ** 2) {
+                value /= 10 ** 2;
+                result += 2;
+            }
+            if (value >= 10 ** 1) {
+                result += 1;
+            }
         }
-        uint256 temp = value;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
+        return result;
+    }
+
+    function toString(uint256 value) internal pure returns (string memory) {
+        bytes16 HEX_DIGITS = "0123456789abcdef";
+        unchecked {
+            uint256 length = log10(value) + 1;
+            string memory buffer = new string(length);
+            uint256 ptr;
+            /// @solidity memory-safe-assembly
+            assembly {
+                ptr := add(buffer, add(32, length))
+            }
+            while (true) {
+                ptr--;
+                /// @solidity memory-safe-assembly
+                assembly {
+                    mstore8(ptr, byte(mod(value, 10), HEX_DIGITS))
+                }
+                value /= 10;
+                if (value == 0) break;
+            }
+            return buffer;
         }
-        bytes memory buffer = new bytes(digits);
-        uint256 index = digits - 1;
-        temp = value;
-        while (temp != 0) {
-            buffer[index--] = bytes1(uint8(48 + (temp % 10)));
-            temp /= 10;
-        }
-        return string(buffer);
     }
 
     function messageEncode(
