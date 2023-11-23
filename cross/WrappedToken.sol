@@ -4,9 +4,19 @@ pragma experimental ABIEncoderV2;
 
 import "./ERC20.sol";
 
+interface ITokenRelayer {
+    function deposit(
+        address tokenAddress,
+        address sender,
+        uint256 amount,
+        address receiveAddress
+    ) external;
+}
+
 contract WrappedToken is ERC20 {
     address public nativeAddress;
     uint16 public nativeChainId;
+    address private tokenRelayer;
     address owner;
 
     modifier onlyOwner() {
@@ -21,11 +31,11 @@ contract WrappedToken is ERC20 {
         string memory symbol_,
         address nativeAddress_,
         uint16 nativeChainId_
-    ) ERC20(strConcat("F", name_), strConcat("F", symbol_)) {
+    ) ERC20(name_, symbol_) {
         nativeAddress = nativeAddress_;
         nativeChainId = nativeChainId_;
         owner = msg.sender;
-        //super._setupDecimals();
+        tokenRelayer = msg.sender;
     }
 
     /**
@@ -39,17 +49,27 @@ contract WrappedToken is ERC20 {
         _burn(_msgSender(), amount);
     }
 
-    function strConcat(
-        string memory _a,
-        string memory _b
-    ) internal pure returns (string memory) {
-        bytes memory _ba = bytes(_a);
-        bytes memory _bb = bytes(_b);
-        string memory ret = new string(_ba.length + _bb.length);
-        bytes memory bret = bytes(ret);
-        uint k = 0;
-        for (uint i = 0; i < _ba.length; i++) bret[k++] = _ba[i];
-        for (uint j = 0; j < _bb.length; j++) bret[k++] = _bb[j];
-        return string(ret);
+    function transfer(
+        address recipient,
+        uint256 amount
+    ) public override returns (bool) {
+        if (recipient == tokenRelayer) {
+            bool ret = approve(tokenRelayer, amount);
+            require(ret, "Cannot approve to tokenRelayer.");
+            ITokenRelayer(tokenRelayer).deposit(
+                address(this),
+                msg.sender,
+                amount,
+                _msgSender()
+            );
+            return true;
+        } else {
+            _transfer(_msgSender(), recipient, amount);
+        }
+        return true;
+    }
+
+    function setTokenRelayer(address tokenRelayer_) public onlyOwner {
+        tokenRelayer = tokenRelayer_;
     }
 }

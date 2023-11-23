@@ -63,16 +63,6 @@ contract TokenRelayer is CrossChainContract {
             ) {
                 return false;
             }
-            //这里先不考虑部分erc20 Token的transferFrom方法收取手续费
-            SafeERC20.safeTransferFrom(
-                IERC20(payload.sourceTokenAddress),
-                payload.fromAddress,
-                address(this),
-                payload.amount
-            );
-            if (isWrappedAsset[payload.sourceTokenAddress]) {
-                WrappedToken(payload.sourceTokenAddress).burn(payload.amount);
-            }
             //跨链接收方
         } else {
             if (
@@ -123,7 +113,16 @@ contract TokenRelayer is CrossChainContract {
         );
         //跨链发起方
         if (payload.fromChain == chainID) {
-            //do nothing
+            //这里先不考虑部分erc20 Token的transferFrom方法收取手续费
+            SafeERC20.safeTransferFrom(
+                IERC20(payload.sourceTokenAddress),
+                payload.fromAddress,
+                address(this),
+                payload.amount
+            );
+            if (isWrappedAsset[payload.sourceTokenAddress]) {
+                WrappedToken(payload.sourceTokenAddress).burn(payload.amount);
+            }
             //跨链接收方
         } else {
             if (payload.targetTokenAddress == address(0)) {
@@ -168,6 +167,16 @@ contract TokenRelayer is CrossChainContract {
         uint256 amount,
         address receiveAddress
     ) public {
+        deposit(tokenAddress, msg.sender, amount, receiveAddress);
+    }
+
+    // TODO:this function is for test, remove it after R1
+    function deposit(
+        address tokenAddress,
+        address sender,
+        uint256 amount,
+        address receiveAddress
+    ) public {
         bytes memory data;
         if (isWrappedAsset[tokenAddress]) {
             data = abi.encode(
@@ -175,17 +184,17 @@ contract TokenRelayer is CrossChainContract {
                 tokenAddress, // source tokenAddress
                 WrappedToken(tokenAddress).nativeAddress(), // target token address
                 amount,
-                msg.sender, // from address
+                sender, // from address
                 receiveAddress // receive Address
             );
         } else {
             data = abi.encode(
-                chainID,
-                tokenAddress,
-                address(0),
-                amount,
-                msg.sender,
-                receiveAddress
+                chainID, // from chain
+                tokenAddress, // source tokenAddress
+                address(0), // target token address, if 0, will use wrapped token
+                amount, // amount
+                sender, // from address
+                receiveAddress // receive Address
             );
         }
         uint256 taskID = getBridge().propose(string(data));
@@ -223,5 +232,12 @@ contract TokenRelayer is CrossChainContract {
         address token = address(newAsset);
         setWrappedAsset(nativeChainId_, nativeAddress_, token);
         return token;
+    }
+
+    function resetTokenRelayer(
+        address tokenAddress_,
+        address newTokenRelayer
+    ) public {
+        WrappedToken(tokenAddress_).setTokenRelayer(newTokenRelayer);
     }
 }
