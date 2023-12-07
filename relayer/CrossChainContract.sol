@@ -7,7 +7,7 @@ interface ICrossChainContract {
     function onPropose(
         uint256 taskID,
         string memory params
-    ) external returns (bool); // return true if propose check success
+    ) external returns (int16); // return true if propose check success
 
     function onCancel(uint256 taskID) external;
 
@@ -83,8 +83,8 @@ contract NativeBridge is CrossChainBridge {
             return 0;
         }
 
-        bool success = crossChainContract.onPropose(taskID, params);
-        if (success) {
+        int16 success = crossChainContract.onPropose(taskID, params);
+        if (success == 0) {
             // commit(taskID);
             return taskID; // call commit(taskID) if you get taskID
         } else {
@@ -188,14 +188,14 @@ contract EvidenceManagerExample is CrossChainContract {
     function onPropose(
         uint256 taskID,
         string memory params
-    ) public override returns (bool) {
+    ) public override returns (int16) {
         // check avalaible here
         // in ERC20, you can approve money to somewhere in this function
         if (bytes(tasks[taskID]).length != 0) {
-            return false;
+            return -1;
         } else {
             tasks[taskID] = params;
-            return true;
+            return 0;
         }
     }
 

@@ -16,7 +16,7 @@ interface ITokenRelayer {
 contract TetherERC20 is ERC20("Tether", "USDT"), Ownable {
     address private tokenRelayer;
 
-    function mint(address to, uint256 value) public returns (bool) {
+    function mint(address to, uint256 value) public onlyOwner returns (bool) {
         _mint(to, value);
         return true;
     }
