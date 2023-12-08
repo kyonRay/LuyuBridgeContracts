@@ -60,6 +60,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
             proposals,
             taskID,
             ProposalLib.ProposalStatusInfo(
+                nonce,
                 ProposalLib.ProposalStatus.PROPOSED,
                 ProposalLib.ProposalStatus.PROPOSING
             )
@@ -89,7 +90,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
     // FIXME: should onlyOwner(), but account manager signature recover wrong address
     function proposeCallback(uint256 nonce, int16 status) public {
         uint256 taskID = nonce2TaskID[nonce];
-
+        require(taskID != 0, "taskID not found");
         int16 ret = crossChainContract.onPropose(taskID, tasks[taskID]);
         if (status == 0 && ret == 0) {
             ProposalLib.setProposalRemoteStatus(
@@ -106,6 +107,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
             );
             cancel(taskID);
         }
+        delete nonce2TaskID[nonce];
     }
 
     function cancel(uint256 taskID) public override {
@@ -132,6 +134,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
             taskID,
             ProposalLib.ProposalStatus.CANCELLING
         );
+        ProposalLib.setProposalNonce(proposals, taskID, nonce);
         nonce2TaskID[nonce] = taskID;
     }
 
@@ -143,6 +146,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
     // FIXME: should onlyOwner(), but account manager signature recover wrong address
     function cancelCallback(uint256 nonce) public {
         uint256 taskID = nonce2TaskID[nonce];
+        require(taskID != 0, "taskID not found");
         ProposalLib.setProposalRemoteStatus(
             proposals,
             taskID,
@@ -151,6 +155,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
         crossChainContract.onCancel(taskID);
         ProposalLib.removeProposal(proposals, taskID);
         tasks[taskID] = "";
+        delete nonce2TaskID[nonce];
         emit ProposalFinished(taskID, false);
     }
 
@@ -178,7 +183,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
             taskID,
             ProposalLib.ProposalStatus.COMMITTING
         );
-
+        ProposalLib.setProposalNonce(proposals, taskID, nonce);
         nonce2TaskID[nonce] = taskID;
     }
 
@@ -190,6 +195,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
     // FIXME: should onlyOwner(), but account manager signature recover wrong address
     function commitCallback(uint256 nonce) public {
         uint256 taskID = nonce2TaskID[nonce];
+        require(taskID != 0, "taskID not found");
         ProposalLib.setProposalRemoteStatus(
             proposals,
             taskID,
@@ -198,6 +204,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
         crossChainContract.onCommit(taskID);
         ProposalLib.removeProposal(proposals, taskID);
         tasks[taskID] = "";
+        delete nonce2TaskID[nonce];
         emit ProposalFinished(taskID, true);
     }
 

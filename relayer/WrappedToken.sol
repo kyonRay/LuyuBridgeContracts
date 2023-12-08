@@ -3,6 +3,7 @@ pragma solidity >=0.4.22 <0.8.20;
 pragma experimental ABIEncoderV2;
 
 import "./ERC20.sol";
+import "./Ownable.sol";
 
 interface ITokenRelayer {
     function deposit(
@@ -13,16 +14,10 @@ interface ITokenRelayer {
     ) external;
 }
 
-contract WrappedToken is ERC20 {
+contract WrappedToken is ERC20, Ownable {
     address public nativeAddress;
     uint16 public nativeChainId;
     address private tokenRelayer;
-    address owner;
-
-    modifier onlyOwner() {
-        require(owner == msg.sender, "Ownable: caller is not the owner");
-        _;
-    }
 
     /**
      */
@@ -34,8 +29,6 @@ contract WrappedToken is ERC20 {
     ) ERC20(name_, symbol_) {
         nativeAddress = nativeAddress_;
         nativeChainId = nativeChainId_;
-        owner = msg.sender;
-        tokenRelayer = msg.sender;
     }
 
     /**
@@ -53,24 +46,20 @@ contract WrappedToken is ERC20 {
         address recipient,
         uint256 amount
     ) public override returns (bool) {
-        if (recipient == tokenRelayer) {
-            bool ret = approve(tokenRelayer, amount);
+        address owner = owner();
+        if (recipient == owner) {
+            bool ret = approve(owner, amount);
             require(ret, "Cannot approve to tokenRelayer.");
-            ITokenRelayer(tokenRelayer).deposit(
+            ITokenRelayer(owner).deposit(
                 address(this),
                 _msgSender(),
                 amount,
                 _msgSender()
             );
-            emit Transfer(_msgSender(), recipient, amount);
             return true;
         } else {
             _transfer(_msgSender(), recipient, amount);
         }
         return true;
-    }
-
-    function setTokenRelayer(address tokenRelayer_) public onlyOwner {
-        tokenRelayer = tokenRelayer_;
     }
 }

@@ -13,6 +13,7 @@ library ProposalLib {
         CANCELED
     }
     struct ProposalStatusInfo {
+        uint256 nonce;
         ProposalStatus localStatus;
         ProposalStatus remoteStatus;
     }
@@ -46,6 +47,14 @@ library ProposalLib {
         ProposalStatus status
     ) internal {
         self.proposalStatus[taskID].remoteStatus = status;
+    }
+
+    function setProposalNonce(
+        ProposalMap storage self,
+        uint256 taskID,
+        uint256 nonce
+    ) internal {
+        self.proposalStatus[taskID].nonce = nonce;
     }
 
     function removeProposal(

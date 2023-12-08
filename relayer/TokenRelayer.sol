@@ -6,8 +6,9 @@ import "./IERC20.sol";
 import "./WrappedToken.sol";
 import "./SafeERC20.sol";
 import "./CrossChainContract.sol";
+import "./Ownable.sol";
 
-contract TokenRelayer is CrossChainContract {
+contract TokenRelayer is CrossChainContract, Ownable {
     // must impl this 3 event handler defined in ICrossChainContract
     //      function onPropose(uint256 taskID, string memory params) external returns(bool); // return true if propose check success
     //      function onCancel(uint256 taskID) external;
@@ -177,6 +178,7 @@ contract TokenRelayer is CrossChainContract {
             amount
         );
         if (isWrappedAsset[tokenAddress]) {
+            // if is wrappedAssets, then this transaction is wrappedAssets send to nativeAddress
             data = abi.encode(
                 chainID, // from chain
                 tokenAddress, // source tokenAddress
@@ -202,11 +204,12 @@ contract TokenRelayer is CrossChainContract {
 
     event CreateToken(address);
 
+    // should make sure wrapper's owner is this contract
     function setWrappedAsset(
         uint16 tokenChainId,
         address tokenAddress,
         address wrapper
-    ) internal {
+    ) public onlyOwner {
         wrappedAssets[tokenChainId][tokenAddress] = wrapper;
         isWrappedAsset[wrapper] = true;
         emit CreateToken(wrapper);
@@ -229,15 +232,10 @@ contract TokenRelayer is CrossChainContract {
             nativeChainId_
         );
         address token = address(newAsset);
-        setWrappedAsset(nativeChainId_, nativeAddress_, token);
+        wrappedAssets[nativeChainId_][nativeAddress_] = token;
+        isWrappedAsset[token] = true;
+        emit CreateToken(token);
         return token;
-    }
-
-    function resetTokenRelayer(
-        address tokenAddress_,
-        address newTokenRelayer
-    ) public {
-        WrappedToken(tokenAddress_).setTokenRelayer(newTokenRelayer);
     }
 
     // get TransferBill
@@ -245,6 +243,13 @@ contract TokenRelayer is CrossChainContract {
         uint256 taskID
     ) public view returns (TransferBill memory) {
         return transferLedger[taskID];
+    }
+
+    function transferWrappedTokenOwnership(
+        address tokenAddress,
+        address newOwner
+    ) public onlyOwner {
+        WrappedToken(tokenAddress).transferOwnership(newOwner);
     }
 
     function bytes2HexString(
