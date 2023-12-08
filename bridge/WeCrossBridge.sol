@@ -77,14 +77,11 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
      * @param taskID The unique identifier for the task to be handled.
      * @param params The parameters for the task to be handled.
      */
-    function proposeHandler(
-        uint256 taskID,
-        string memory params
-    ) public returns (int16) {
+    function proposeHandler(uint256 taskID, string memory params) public {
         tasks[taskID] = params;
         int16 ret = crossChainContract.onPropose(taskID, params);
         emit ProposeReceived(taskID, params, ret);
-        return ret;
+        require(ret == 0, "onPropose failed");
     }
 
     // FIXME: should onlyOwner(), but account manager signature recover wrong address
