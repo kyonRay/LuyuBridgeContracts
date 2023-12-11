@@ -18,7 +18,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
     // taskID => propose status
     ProposalLib.ProposalMap internal proposals;
 
-    event ProposeReceived(uint256 taskID, string params, int16 status);
+    event ProposeReceived(uint256 taskID, string params, int256 status);
     event CancelReceived(uint256 taskID);
     event CommitReceived(uint256 taskID);
     event ProposalFinished(uint256 taskID, bool success);
@@ -83,7 +83,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
             return;
         }
         tasks[taskID] = params;
-        int16 ret = crossChainContract.onPropose(taskID, params);
+        int256 ret = crossChainContract.onPropose(taskID, params);
         emit ProposeReceived(taskID, params, ret);
         require(ret == 0, "onPropose failed");
     }
@@ -101,7 +101,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
         }
 
         require(taskID != 0, "taskID not found");
-        int16 ret = crossChainContract.onPropose(taskID, tasks[taskID]);
+        int256 ret = crossChainContract.onPropose(taskID, tasks[taskID]);
         if (status == 0 && ret == 0) {
             ProposalLib.setProposalRemoteStatus(
                 proposals,
@@ -120,6 +120,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
         delete nonce2TaskID[nonce];
     }
 
+    // internal?
     function cancel(uint256 taskID) public override {
         if (
             proposals.proposalStatus[taskID].localStatus !=
@@ -185,6 +186,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
         emit ProposalFinished(taskID, false);
     }
 
+    // internal?
     function commit(uint256 taskID) public override {
         if (
             proposals.proposalStatus[taskID].localStatus !=

@@ -16,8 +16,10 @@ interface ITokenRelayer {
 
 contract WrappedToken is ERC20, Ownable {
     address public nativeAddress;
-    uint16 public nativeChainId;
+    uint256 public nativeChainId;
     address private tokenRelayer;
+    uint256 private rate = 1;
+    uint256 private rateDecimals = 0;
 
     /**
      */
@@ -25,7 +27,7 @@ contract WrappedToken is ERC20, Ownable {
         string memory name_,
         string memory symbol_,
         address nativeAddress_,
-        uint16 nativeChainId_
+        uint256 nativeChainId_
     ) ERC20(name_, symbol_) {
         nativeAddress = nativeAddress_;
         nativeChainId = nativeChainId_;
@@ -33,13 +35,17 @@ contract WrappedToken is ERC20, Ownable {
 
     /**
      */
-    function mint(address to, uint256 value) public onlyOwner returns (bool) {
-        _mint(to, value);
+    function mint(address to, uint256 value) external onlyOwner returns (bool) {
+        // mint wrapped token = value * rate / 10^rateDecimals
+        uint256 amount = (value * rate) / (10 ** rateDecimals);
+        _mint(to, amount);
         return true;
     }
 
-    function burn(uint256 amount) public onlyOwner {
-        _burn(_msgSender(), amount);
+    function burn(uint256 amount) external onlyOwner {
+        // burn wrapped token = amount / (rate / 10^rateDecimals)
+        uint256 value = (amount * (10 ** rateDecimals)) / rate;
+        _burn(_msgSender(), value);
     }
 
     function transfer(
@@ -61,5 +67,17 @@ contract WrappedToken is ERC20, Ownable {
             _transfer(_msgSender(), recipient, amount);
         }
         return true;
+    }
+
+    function setExchangeRate(
+        uint256 _rate,
+        uint256 _rateDecimals
+    ) external onlyOwner {
+        rate = _rate;
+        rateDecimals = _rateDecimals;
+    }
+
+    function getExchangeRate() external view returns (uint256, uint256) {
+        return (rate, rateDecimals);
     }
 }

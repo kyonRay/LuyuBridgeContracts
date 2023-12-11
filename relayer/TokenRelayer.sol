@@ -9,13 +9,8 @@ import "./CrossChainContract.sol";
 import "./Ownable.sol";
 
 contract TokenRelayer is CrossChainContract, Ownable {
-    // must impl this 3 event handler defined in ICrossChainContract
-    //      function onPropose(uint256 taskID, string memory params) external returns(bool); // return true if propose check success
-    //      function onCancel(uint256 taskID) external;
-    //      function onCommit(uint256 taskID) external;
-
     struct RelayerPayload {
-        uint16 fromChain;
+        uint256 fromChain;
         address sourceTokenAddress;
         address targetTokenAddress;
         uint256 amount;
@@ -23,28 +18,28 @@ contract TokenRelayer is CrossChainContract, Ownable {
         address receiveAddress;
     }
 
-    struct TransferBill {
-        address tokenAddress;
-        address fromAddress;
-        uint256 amount;
-    }
+    // struct TransferBill {
+    //     address tokenAddress;
+    //     address fromAddress;
+    //     uint256 amount;
+    // }
 
     // Mapping of wrapped assets (chainID => nativeAddress => wrappedAddress)
-    mapping(uint16 => mapping(address => address)) wrappedAssets;
+    mapping(uint256 => mapping(address => address)) wrappedAssets;
 
     // Mapping to safely identify wrapped assets
     mapping(address => bool) isWrappedAsset;
 
     // Mapping transfer amount
     /// taskID => TransferBill
-    mapping(uint256 => TransferBill) transferLedger;
+    // mapping(uint256 => TransferBill) transferLedger;
 
     mapping(uint256 => string) tasks;
-    uint16 chainID;
+    uint256 chainID;
 
     event Deposit(uint256, address, address, address, uint256);
 
-    constructor(uint16 chainID_) {
+    constructor(uint256 chainID_) {
         chainID = chainID_;
     }
 
@@ -53,7 +48,7 @@ contract TokenRelayer is CrossChainContract, Ownable {
     function onPropose(
         uint256 taskID,
         string memory params
-    ) public override returns (int16) {
+    ) public override returns (int256) {
         // check avalaible here
         // in ERC20, you can approve money to somewhere in this function
         if (bytes(tasks[taskID]).length != 0) {
@@ -69,14 +64,14 @@ contract TokenRelayer is CrossChainContract, Ownable {
         );
         //跨链发起方
         if (payload.fromChain == chainID) {
-            TransferBill memory transferBill = transferLedger[taskID];
-            if (
-                transferBill.tokenAddress != payload.sourceTokenAddress ||
-                transferBill.fromAddress != payload.fromAddress ||
-                transferBill.amount != payload.amount
-            ) {
-                return 3;
-            }
+            // TransferBill memory transferBill = transferLedger[taskID];
+            // if (
+            //     transferBill.tokenAddress != payload.sourceTokenAddress ||
+            //     transferBill.fromAddress != payload.fromAddress ||
+            //     transferBill.amount != payload.amount
+            // ) {
+            //     return 3;
+            // }
             //跨链接收方
         } else {
             if (
@@ -107,8 +102,9 @@ contract TokenRelayer is CrossChainContract, Ownable {
                     payload.amount
                 );
             }
+            // delete?
+            tasks[taskID] = "";
         }
-        tasks[taskID] = "";
         return;
     }
 
@@ -117,7 +113,10 @@ contract TokenRelayer is CrossChainContract, Ownable {
     function onCommit(uint256 taskID) public override {
         // do the acture operation here
         // in ERC20, you can transfer money to someone that need to transfer before
-        require(bytes(tasks[taskID]).length != 0, "invalid taskId");
+        // require(bytes(tasks[taskID]).length != 0, "invalid taskId");
+        if (bytes(tasks[taskID]).length == 0) {
+            return;
+        }
         RelayerPayload memory payload = abi.decode(
             bytes(tasks[taskID]),
             (RelayerPayload)
@@ -151,17 +150,18 @@ contract TokenRelayer is CrossChainContract, Ownable {
                 );
             }
         }
+        // delete?
         tasks[taskID] = "";
     }
 
     // set to all chain
-    function deposit(
-        address tokenAddress,
-        uint256 amount,
-        address receiveAddress
-    ) public {
-        deposit(tokenAddress, msg.sender, amount, receiveAddress);
-    }
+    // function deposit(
+    //     address tokenAddress,
+    //     uint256 amount,
+    //     address receiveAddress
+    // ) public {
+    //     deposit(tokenAddress, msg.sender, amount, receiveAddress);
+    // }
 
     // TODO:this function is for test, remove it after R1
     function deposit(
@@ -198,7 +198,7 @@ contract TokenRelayer is CrossChainContract, Ownable {
             );
         }
         uint256 taskID = getBridge().propose(bytes2HexString(data));
-        transferLedger[taskID] = TransferBill(tokenAddress, sender, amount);
+        // transferLedger[taskID] = TransferBill(tokenAddress, sender, amount);
         emit Deposit(taskID, tokenAddress, sender, receiveAddress, amount);
     }
 
@@ -206,7 +206,7 @@ contract TokenRelayer is CrossChainContract, Ownable {
 
     // should make sure wrapper's owner is this contract
     function setWrappedAsset(
-        uint16 tokenChainId,
+        uint256 tokenChainId,
         address tokenAddress,
         address wrapper
     ) public onlyOwner {
@@ -219,12 +219,11 @@ contract TokenRelayer is CrossChainContract, Ownable {
         string memory name_,
         string memory symbol_,
         address nativeAddress_,
-        uint16 nativeChainId_
-    ) public returns (address) {
-        require(
-            wrappedAssets[nativeChainId_][nativeAddress_] == address(0),
-            "wrapped asset already exists"
-        );
+        uint256 nativeChainId_
+    ) external returns (address) {
+        if (wrappedAssets[nativeChainId_][nativeAddress_] != address(0)) {
+            return wrappedAssets[nativeChainId_][nativeAddress_];
+        }
         WrappedToken newAsset = new WrappedToken(
             name_,
             symbol_,
@@ -239,17 +238,25 @@ contract TokenRelayer is CrossChainContract, Ownable {
     }
 
     // get TransferBill
-    function getTransferBill(
-        uint256 taskID
-    ) public view returns (TransferBill memory) {
-        return transferLedger[taskID];
-    }
+    // function getTransferBill(
+    //     uint256 taskID
+    // ) external  view returns (TransferBill memory) {
+    //     return transferLedger[taskID];
+    // }
 
     function transferWrappedTokenOwnership(
         address tokenAddress,
         address newOwner
-    ) public onlyOwner {
+    ) external onlyOwner {
         WrappedToken(tokenAddress).transferOwnership(newOwner);
+    }
+
+    function setWrappedAssetExchangeRate(
+        address tokenAddress,
+        uint256 rate,
+        uint32 rateDecimals
+    ) external onlyOwner {
+        WrappedToken(tokenAddress).setExchangeRate(rate, rateDecimals);
     }
 
     function bytes2HexString(

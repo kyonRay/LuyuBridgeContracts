@@ -4,13 +4,13 @@ pragma experimental ABIEncoderV2;
 
 library ProposalLib {
     enum ProposalStatus {
-        PROPOSING,
-        PROPOSED,
-        PROPOSE_FAILED,
-        COMMITTING,
-        COMMITTED,
-        CANCELLING,
-        CANCELED
+        PROPOSING, // 0
+        PROPOSED, // 1
+        PROPOSE_FAILED, // 2
+        COMMITTING, // 3
+        COMMITTED, // 4
+        CANCELLING, // 5
+        CANCELED // 6
     }
     struct ProposalStatusInfo {
         uint256 nonce;
