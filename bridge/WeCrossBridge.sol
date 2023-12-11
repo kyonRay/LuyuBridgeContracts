@@ -77,7 +77,11 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
      * @param taskID The unique identifier for the task to be handled.
      * @param params The parameters for the task to be handled.
      */
+    // FIXME: should onlyOwner(), but account manager signature recover wrong address
     function proposeHandler(uint256 taskID, string memory params) public {
+        if (bytes(tasks[taskID]).length != 0) {
+            return;
+        }
         tasks[taskID] = params;
         int16 ret = crossChainContract.onPropose(taskID, params);
         emit ProposeReceived(taskID, params, ret);
@@ -87,6 +91,15 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
     // FIXME: should onlyOwner(), but account manager signature recover wrong address
     function proposeCallback(uint256 nonce, int16 status) public {
         uint256 taskID = nonce2TaskID[nonce];
+        if (
+            proposals.proposalStatus[taskID].localStatus !=
+            ProposalLib.ProposalStatus.PROPOSED ||
+            proposals.proposalStatus[taskID].remoteStatus !=
+            ProposalLib.ProposalStatus.PROPOSING
+        ) {
+            return;
+        }
+
         require(taskID != 0, "taskID not found");
         int16 ret = crossChainContract.onPropose(taskID, tasks[taskID]);
         if (status == 0 && ret == 0) {
@@ -108,6 +121,14 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
     }
 
     function cancel(uint256 taskID) public override {
+        if (
+            proposals.proposalStatus[taskID].localStatus !=
+            ProposalLib.ProposalStatus.PROPOSED ||
+            proposals.proposalStatus[taskID].remoteStatus !=
+            ProposalLib.ProposalStatus.PROPOSE_FAILED
+        ) {
+            return;
+        }
         string memory path = peerPath;
         string memory method = "cancelHandler";
         string[] memory args = new string[](1);
@@ -143,6 +164,14 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
     // FIXME: should onlyOwner(), but account manager signature recover wrong address
     function cancelCallback(uint256 nonce) public {
         uint256 taskID = nonce2TaskID[nonce];
+        if (
+            proposals.proposalStatus[taskID].localStatus !=
+            ProposalLib.ProposalStatus.CANCELED ||
+            proposals.proposalStatus[taskID].remoteStatus !=
+            ProposalLib.ProposalStatus.CANCELLING
+        ) {
+            return;
+        }
         require(taskID != 0, "taskID not found");
         ProposalLib.setProposalRemoteStatus(
             proposals,
@@ -157,6 +186,14 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
     }
 
     function commit(uint256 taskID) public override {
+        if (
+            proposals.proposalStatus[taskID].localStatus !=
+            ProposalLib.ProposalStatus.PROPOSED ||
+            proposals.proposalStatus[taskID].remoteStatus !=
+            ProposalLib.ProposalStatus.PROPOSED
+        ) {
+            return;
+        }
         string memory path = peerPath;
         string memory method = "commitHandler";
         string[] memory args = new string[](1);
@@ -192,6 +229,14 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
     // FIXME: should onlyOwner(), but account manager signature recover wrong address
     function commitCallback(uint256 nonce) public {
         uint256 taskID = nonce2TaskID[nonce];
+        if (
+            proposals.proposalStatus[taskID].localStatus !=
+            ProposalLib.ProposalStatus.COMMITTED ||
+            proposals.proposalStatus[taskID].remoteStatus !=
+            ProposalLib.ProposalStatus.COMMITTING
+        ) {
+            return;
+        }
         require(taskID != 0, "taskID not found");
         ProposalLib.setProposalRemoteStatus(
             proposals,
@@ -274,63 +319,5 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
             }
             return buffer;
         }
-    }
-
-    function messageEncode(
-        string memory message
-    ) private pure returns (string memory) {
-        return bytes2HexString(bytes(message));
-    }
-
-    function messageDecode(
-        string memory encodedMessage
-    ) private pure returns (string memory) {
-        return string(hexString2Bytes(encodedMessage));
-    }
-
-    function bytes2HexString(
-        bytes memory buffer
-    ) private pure returns (string memory) {
-        // Fixed buffer size for hexadecimal convertion
-        bytes memory converted = new bytes(buffer.length * 2);
-
-        bytes memory _base = "0123456789abcdef";
-
-        for (uint256 i = 0; i < buffer.length; i++) {
-            converted[i * 2] = _base[uint8(buffer[i]) / _base.length];
-            converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
-        }
-
-        return string(abi.encodePacked(converted));
-    }
-
-    function fromHexChar(uint8 c) private pure returns (uint8) {
-        if (bytes1(c) >= bytes1("0") && bytes1(c) <= bytes1("9")) {
-            return c - uint8(bytes1("0"));
-        }
-        if (bytes1(c) >= bytes1("a") && bytes1(c) <= bytes1("f")) {
-            return 10 + c - uint8(bytes1("a"));
-        }
-        if (bytes1(c) >= bytes1("A") && bytes1(c) <= bytes1("F")) {
-            return 10 + c - uint8(bytes1("A"));
-        }
-        revert("fail");
-    }
-
-    // Convert an hexadecimal string to raw bytes
-    function hexString2Bytes(
-        string memory s
-    ) private pure returns (bytes memory) {
-        bytes memory ss = bytes(s);
-        require(ss.length % 2 == 0); // length must be even
-        bytes memory r = new bytes(ss.length / 2);
-        for (uint i = 0; i < ss.length / 2; ++i) {
-            r[i] = bytes1(
-                fromHexChar(uint8(ss[2 * i])) *
-                    16 +
-                    fromHexChar(uint8(ss[2 * i + 1]))
-            );
-        }
-        return r;
     }
 }
