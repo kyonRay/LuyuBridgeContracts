@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "./ERC20.sol";
 import "./Ownable.sol";
+import "./SafeMath.sol";
 
 interface ITokenRelayer {
     function deposit(
@@ -37,14 +38,20 @@ contract WrappedToken is ERC20, Ownable {
      */
     function mint(address to, uint256 value) external onlyOwner returns (bool) {
         // mint wrapped token = value * rate / 10^rateDecimals
-        uint256 amount = (value * rate) / (10 ** rateDecimals);
+        uint256 amount = SafeMath.div(
+            SafeMath.mul(value, rate),
+            (10 ** rateDecimals)
+        );
         _mint(to, amount);
         return true;
     }
 
     function burn(uint256 amount) external onlyOwner {
         // burn wrapped token = amount / (rate / 10^rateDecimals)
-        uint256 value = (amount * (10 ** rateDecimals)) / rate;
+        uint256 value = SafeMath.div(
+            SafeMath.mul(amount, (10 ** rateDecimals)),
+            rate
+        );
         _burn(_msgSender(), value);
     }
 

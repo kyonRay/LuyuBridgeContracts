@@ -17,6 +17,13 @@ contract TokenRelayer is CrossChainContract, Ownable {
         address fromAddress;
         address receiveAddress;
     }
+    modifier onlyBridge() {
+        require(
+            _msgSender() == address(getBridge()) || _msgSender() == owner(),
+            "only bridge or owner can call this function"
+        );
+        _;
+    }
 
     // struct TransferBill {
     //     address tokenAddress;
@@ -43,12 +50,11 @@ contract TokenRelayer is CrossChainContract, Ownable {
         chainID = chainID_;
     }
 
-    // FIXME: only bridge
     // 1. onPropose example
     function onPropose(
         uint256 taskID,
         string memory params
-    ) public override returns (int256) {
+    ) public override onlyBridge returns (int256) {
         // check avalaible here
         // in ERC20, you can approve money to somewhere in this function
         if (bytes(tasks[taskID]).length != 0) {
@@ -74,6 +80,14 @@ contract TokenRelayer is CrossChainContract, Ownable {
             // }
             //跨链接收方
         } else {
+            if (payload.targetTokenAddress == address(0)) {
+                require(
+                    wrappedAssets[payload.fromChain][
+                        payload.sourceTokenAddress
+                    ] != address(0),
+                    "can not find wrapped token for this native token"
+                );
+            }
             if (
                 payload.targetTokenAddress != address(0) &&
                 IERC20(payload.targetTokenAddress).balanceOf(address(this)) <
@@ -86,9 +100,8 @@ contract TokenRelayer is CrossChainContract, Ownable {
         return 0;
     }
 
-    // FIXME: only bridge
     // 2. onCancel example
-    function onCancel(uint256 taskID) public override {
+    function onCancel(uint256 taskID) public override onlyBridge {
         // in ERC20, you can send money back to someone who has approved before.
         if (bytes(tasks[taskID]).length != 0) {
             RelayerPayload memory payload = abi.decode(
@@ -108,9 +121,8 @@ contract TokenRelayer is CrossChainContract, Ownable {
         return;
     }
 
-    // FIXME: only bridge
     // 3. onCommit example
-    function onCommit(uint256 taskID) public override {
+    function onCommit(uint256 taskID) public override onlyBridge {
         // do the acture operation here
         // in ERC20, you can transfer money to someone that need to transfer before
         // require(bytes(tasks[taskID]).length != 0, "invalid taskId");
@@ -128,13 +140,8 @@ contract TokenRelayer is CrossChainContract, Ownable {
             }
             //跨链接收方
         } else {
+            // TODO: comment it
             if (payload.targetTokenAddress == address(0)) {
-                require(
-                    wrappedAssets[payload.fromChain][
-                        payload.sourceTokenAddress
-                    ] != address(0),
-                    "can not find wrapped token for this native token"
-                );
                 payload.targetTokenAddress = wrappedAssets[payload.fromChain][
                     payload.sourceTokenAddress
                 ];
@@ -197,6 +204,7 @@ contract TokenRelayer is CrossChainContract, Ownable {
                 receiveAddress // receive Address
             );
         }
+        // remove to hex
         uint256 taskID = getBridge().propose(bytes2HexString(data));
         // transferLedger[taskID] = TransferBill(tokenAddress, sender, amount);
         emit Deposit(taskID, tokenAddress, sender, receiveAddress, amount);
@@ -215,12 +223,13 @@ contract TokenRelayer is CrossChainContract, Ownable {
         emit CreateToken(wrapper);
     }
 
+    // TODO: comment native means
     function createWrapped(
         string memory name_,
         string memory symbol_,
         address nativeAddress_,
         uint256 nativeChainId_
-    ) external returns (address) {
+    ) external onlyOwner returns (address) {
         if (wrappedAssets[nativeChainId_][nativeAddress_] != address(0)) {
             return wrappedAssets[nativeChainId_][nativeAddress_];
         }

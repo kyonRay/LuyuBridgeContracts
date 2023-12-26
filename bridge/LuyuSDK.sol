@@ -151,6 +151,7 @@ contract LuyuContract is ILuyuSDK {
         return nonce;
     }
 
+    // TODO: remove getNow
     function getNonce() public returns (uint256) {
         return ((nonceSeed++) % 100000) + getNow() * 100000;
     }

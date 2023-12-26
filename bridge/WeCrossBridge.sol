@@ -43,6 +43,7 @@ contract WeCrossBridge is CrossChainBridge, LuyuContract, Ownable {
         string memory path = peerPath;
         string memory method = "proposeHandler";
         string[] memory args = new string[](2);
+        // TODO: luyu use bytes args
         args[0] = toString(taskID);
         args[1] = params;
         string memory callbackMethod = "proposeCallback";
